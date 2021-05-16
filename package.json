@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "dotenv": "^9.0.2"
+  },
+  "name": "TbdDiscordBot",
+  "description": "",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thienbinhdinh98/TbdDiscordBot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thienbinhdinh98/TbdDiscordBot/issues"
+  },
+  "homepage": "https://github.com/thienbinhdinh98/TbdDiscordBot#readme",
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  }
+}
