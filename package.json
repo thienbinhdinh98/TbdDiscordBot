@@ -2,6 +2,7 @@
   "dependencies": {
     "discord.js": "^12.5.3",
     "dotenv": "^9.0.2",
+    "node-fetch": "^2.6.1",
     "npm": "^7.15.1"
   },
   "name": "TbdDiscordBot",
