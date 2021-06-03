@@ -58,10 +58,24 @@ client.on('message', msg =>{
                         let user_name = summoner_data.name;
                         let user_level = summoner_data.summonerLevel;
                         let user_icon_id = summoner_data.profileIconId;
-                        let Winrate = user_rank_data[1].wins / user_rank_data[1].losses;
+                        let Winrate = 100*(user_rank_data[1].wins / (user_rank_data[1].wins + user_rank_data[1].losses));
                         let game_win = user_rank_data[1].wins;
                         let game_lost = user_rank_data[1].losses;
-                        console.log(user_rank);
+                        let player_info_embed = new Discord.MessageEmbed()
+                            .setColor('#0099ff')
+                            .setTitle('Summoner Information')
+                            .setThumbnail(`http://ddragon.leagueoflegends.com/cdn/10.18.1/img/profileicon/${user_icon_id}.png`)
+                            .addFields(
+                                { name: 'Summoner Name', value: user_name},
+                                { name: '\u200B', value: '\u200B' },
+                                { name: 'Summoner Level', value: user_level, inline: true },
+                                { name: 'Rank', value: user_rank+' '+user_division, inline: true },
+                            )
+                            .addField('Win rate', Winrate.toFixed(2)+"%", true)
+                            .setTimestamp()
+                        msg.channel.send(player_info_embed);
+                        // TODO: handle undefined rank(not finished ranked or not level 30)
+                            
                     }
                 ).catch(error => console.log(error))
             }
