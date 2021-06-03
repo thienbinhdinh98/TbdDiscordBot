@@ -45,15 +45,22 @@ client.on('message', msg =>{
         let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
         findUserInfo(league_api_SUMMONERV4_url).then(
             summoner_data => {
+                //getting encrypted summoner id to make an url for api
                 let league_encrypted_id = summoner_data.id;
                 let league_api_LEAGUEV4_url = `https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/${league_encrypted_id}?api_key=${process.env.RIOT_TOKEN}`;
                 findUserRank(league_api_LEAGUEV4_url).then(
                     user_rank_data => {
-                        let user_rank = user_rank_data[1].tier; //the naming from the API is awkward, actual rank called tier, and division called rank.
+                        //defining some variable neccessary to store from the json file
+                        //the naming from the API is awkward, actual rank called tier, and division called rank.
+                        let user_rank = user_rank_data[1].tier; 
                         let user_division = user_rank_data[1].rank;
+                        //naming the variables with actual name players use.
                         let user_name = summoner_data.name;
                         let user_level = summoner_data.summonerLevel;
                         let user_icon_id = summoner_data.profileIconId;
+                        let Winrate = user_rank_data[1].wins / user_rank_data[1].losses;
+                        let game_win = user_rank_data[1].wins;
+                        let game_lost = user_rank_data[1].losses;
                         console.log(user_rank);
                     }
                 ).catch(error => console.log(error))
