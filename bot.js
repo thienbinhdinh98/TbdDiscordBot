@@ -47,18 +47,23 @@ client.on('message', msg =>{
         league_user_name = encodeURIComponent(league_user_name);
         //the work goes here
         let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
-        console.log(league_api_SUMMONERV4_url);
         findUserInfo(league_api_SUMMONERV4_url).then(
             summoner_data => {
                 //getting encrypted summoner id to make an url for api
                 let league_encrypted_id = summoner_data.id;
                 let league_api_LEAGUEV4_url = `https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/${league_encrypted_id}?api_key=${process.env.RIOT_TOKEN}`;
-                console.log(league_api_LEAGUEV4_url);
                 findUserRank(league_api_LEAGUEV4_url).then(
                     user_rank_data => {
                         //defining some variable neccessary to store from the json file
                         //the naming from the API is awkward, actual rank called tier, and division called rank.
-                        rank_data = user_rank_data[0];
+                        let rank_data;
+                        if(user_rank_data[0].queueType ==  "RANKED_SOLO_5x5"){
+                            rank_data = user_rank_data[0];
+                        }
+                        if(user_rank_data[0].queueType !=  "RANKED_SOLO_5x5"){
+                            rank_data = user_rank_data[1];
+                        }
+                        
                         let user_rank = "Unranked";
                         let user_division = "";
                         let game_win = "Unranked";
