@@ -1,34 +1,105 @@
 require('dotenv').config()
-
+const fetch = require("node-fetch");
 const Discord  = require('discord.js');
 const client = new Discord.Client();
 
 const BOT_PREFIX = '!';
 const MOD_ME_COMMAND = 'mod-me';
-
+const FIND_USER = 'find';
+ 
 client.on('ready', ()=> {
     console.log('Logged in and ready to fire');
 });
 
-function mod_user(member){
-    member.roles.add(process.env.MOD_ID);
+//fetch the SUMMONER_V4 API
+async function findUserInfo(league_api_SUMMONERV4_url){
+    return (await fetch(league_api_SUMMONERV4_url)).json();
 }
 
-
+//fetch the LEAGUE_V4 API
+async function findUserRank(league_api_LEAGUEV4_url){
+    let response = await fetch(league_api_LEAGUEV4_url);
+    let dat = await response.json();
+    return dat;
+}
 
 client.on('message', msg =>{
-    if(msg.content === `${BOT_PREFIX}${MOD_ME_COMMAND}`){
-        mod_user(msg.member);
-    }
-
+    //just a fun function to do here
     if(msg.content == 'I love you bot'){
         msg.reply("I love you too ❤️");
         msg.react("❤️");
     }
 
-    if(msg.content === '!ping'){
-        msg.channel.send("it's Binh")
-        //msg.reply('Pong!');
+    //splitting the message content from the user
+    let user_message = msg.content.split(' '); //this an array
+    if(user_message[0] === `${BOT_PREFIX}${FIND_USER}`){
+        let league_user_name = '';
+        //getting the user name from the user message
+        var i = 1;
+        while(user_message[i] != null){ //user name is often small so the big O of this loop does not affect much (loop 2 or 3 times only)
+            league_user_name += user_message[i];
+            if(user_message[i+1] != null){
+                league_user_name += " ";
+            }
+            i++;
+        }
+        //encode URL of the player name to be sent to the API
+        league_user_name = encodeURIComponent(league_user_name);
+        //the work goes here
+        let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
+        console.log(league_api_SUMMONERV4_url);
+        findUserInfo(league_api_SUMMONERV4_url).then(
+            summoner_data => {
+                //getting encrypted summoner id to make an url for api
+                let league_encrypted_id = summoner_data.id;
+                let league_api_LEAGUEV4_url = `https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/${league_encrypted_id}?api_key=${process.env.RIOT_TOKEN}`;
+                console.log(league_api_LEAGUEV4_url);
+                findUserRank(league_api_LEAGUEV4_url).then(
+                    user_rank_data => {
+                        //defining some variable neccessary to store from the json file
+                        //the naming from the API is awkward, actual rank called tier, and division called rank.
+                        rank_data = user_rank_data[0];
+                        let user_rank = "Unranked";
+                        let user_division = "";
+                        let game_win = "Unranked";
+                        let game_lost = "Unranked";
+                        let Winrate;
+                        //if the api return undefined for player who hasnt played ranked
+                        if(rank_data != null){
+                            user_rank = rank_data.tier;
+                            user_division = rank_data.rank;
+                            game_win = rank_data.wins;
+                            game_lost = rank_data.losses;
+                        }
+                        
+                        if(game_win == "Unranked"){
+                            Winrate = "Unranked";
+                        }else{
+                            Winrate = 100*(game_win / (game_lost+game_win));
+                            Winrate = Winrate.toFixed(2) + "%";
+                        }
+                        //naming the variables with actual terms players use.
+                        let user_name = summoner_data.name;
+                        let user_level = summoner_data.summonerLevel;
+                        let user_icon_id = summoner_data.profileIconId;
+                        //doing embed to show the information
+                        let player_info_embed = new Discord.MessageEmbed() 
+                            .setColor('#0099ff')
+                            .setTitle('Summoner Information')
+                            .setThumbnail(`http://ddragon.leagueoflegends.com/cdn/10.18.1/img/profileicon/${user_icon_id}.png`)
+                            .addFields(
+                                { name: 'Summoner Name', value: user_name},
+                                { name: '\u200B', value: '\u200B' },
+                                { name: 'Summoner Level', value: user_level, inline: true },
+                                { name: 'Rank', value: user_rank+' '+user_division, inline: true },
+                            )
+                            .addField('Win rate', Winrate, true)
+                            .setTimestamp()
+                        msg.channel.send(player_info_embed);
+                    }
+                ).catch(error => console.log(error))
+            }
+        ).catch(error => console.log(error))
     }
 });
 
