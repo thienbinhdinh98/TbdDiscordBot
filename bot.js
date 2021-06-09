@@ -6,13 +6,14 @@ const client = new Discord.Client();
 const BOT_PREFIX = '!';
 const MOD_ME_COMMAND = 'mod-me';
 const FIND_USER = 'find';
- 
+const MATCH_HISTORY = "match";
+
 client.on('ready', ()=> {
     console.log('Logged in and ready to fire');
 });
 
 //fetch the SUMMONER_V4 API
-async function findUserInfo(league_api_SUMMONERV4_url){
+async function findUserInfo(league_api_SUMMONERV4_url){ 
     return (await fetch(league_api_SUMMONERV4_url)).json();
 }
 
@@ -23,29 +24,45 @@ async function findUserRank(league_api_LEAGUEV4_url){
     return dat;
 }
 
+async function findMatchIdByPuuid(league_api_MATCHV5byPuuid_url){
+    return (await fetch(league_api_MATCHV5byPuuid_url)).json();
+}
+
+async function findMatchHistoryById(league_api_MATCHV5byMatchId){
+    return (await fetch(league_api_MATCHV5byMatchId)).json();
+}
+
+function getLeagueUserName(user_message){
+    //getting the user name from the user message
+    var i = 1;
+    let league_user_name = "";
+    while(user_message[i] != null){ //user name is often small so the big O of this loop does not affect much (loop 2 or 3 times only)
+        league_user_name += user_message[i];
+        if(user_message[i+1] != null){
+            league_user_name += " ";
+        }
+        i++;
+    }
+    return league_user_name;
+}
+
 client.on('message', msg =>{
+    //------------------------------------------------------------------------------------------------------------------------
     //just a fun function to do here
     if(msg.content == 'I love you bot'){
         msg.reply("I love you too ❤️");
         msg.react("❤️");
     }
 
-    //splitting the message content from the user
+    //Split the message content from the user
     let user_message = msg.content.split(' '); //this an array
+
+    //------------------------------------------------------------------------------------------------------------------------
+    //FIND USER INFO
     if(user_message[0] === `${BOT_PREFIX}${FIND_USER}`){
-        let league_user_name = '';
-        //getting the user name from the user message
-        var i = 1;
-        while(user_message[i] != null){ //user name is often small so the big O of this loop does not affect much (loop 2 or 3 times only)
-            league_user_name += user_message[i];
-            if(user_message[i+1] != null){
-                league_user_name += " ";
-            }
-            i++;
-        }
         //encode URL of the player name to be sent to the API
-        league_user_name = encodeURIComponent(league_user_name);
-        //the work goes here
+        league_user_name = encodeURIComponent(getLeagueUserName(user_message));
+        //Create URL
         let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
         findUserInfo(league_api_SUMMONERV4_url).then(
             summoner_data => {
@@ -106,6 +123,33 @@ client.on('message', msg =>{
             }
         ).catch(error => console.log(error))
     }
+
+    //------------------------------------------------------------------------------------------------------------------------
+    //FIND MATCH HISTORY
+    if(user_message[0] === `${BOT_PREFIX}${MATCH_HISTORY}`){
+        //encode URL of the player name to be sent to the API
+        league_user_name = encodeURIComponent(getLeagueUserName(user_message));
+        //Create URL
+        let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
+        findUserInfo(league_api_SUMMONERV4_url).then(
+            summoner_data => {
+                let league_api_MATCHV5byPuuid_url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${summoner_data.puuid}/ids?start=0&count=10&api_key=${process.env.RIOT_TOKEN}`;
+                findMatchIdByPuuid(league_api_MATCHV5byPuuid_url).then(
+                    match_id_list =>{
+                        for(var i = 0; i < 10; i++ ){
+                            let league_api_MATCHV5byMatchId = `https://americas.api.riotgames.com/lol/match/v5/matches/${match_id_list[i]}?api_key=${process.env.RIOT_TOKEN}`
+                            findMatchHistoryById(league_api_MATCHV5byMatchId).then(
+                                match_data =>{
+                                    //TODO: now what to do with match_data?
+                                }
+                            ).catch(error => console.log(error));
+                        }
+                    }
+                ).catch(error => console.log(error));
+            }
+        ).catch(error => console.log(error));
+    }
+
 });
 
 client.login(process.env.BOT_TOKEN);
