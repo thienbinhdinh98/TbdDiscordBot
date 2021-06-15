@@ -1,7 +1,10 @@
 require('dotenv').config()
+
 const fetch = require("node-fetch");
 const Discord  = require('discord.js');
 const client = new Discord.Client();
+
+const ddragon_version_api_url = `https://ddragon.leagueoflegends.com/api/versions.json`;
 
 const BOT_PREFIX = '!';
 const MOD_ME_COMMAND = 'mod-me';
@@ -11,6 +14,10 @@ const MATCH_HISTORY = "match";
 client.on('ready', ()=> {
     console.log('Logged in and ready to fire');
 });
+
+async function findDDragonVersion(){ 
+    return (await fetch(ddragon_version_api_url)).json();
+}
 
 //fetch the SUMMONER_V4 API
 async function findUserInfo(league_api_SUMMONERV4_url){ 
@@ -74,18 +81,18 @@ client.on('message', msg =>{
                         //defining some variable neccessary to store from the json file
                         //the naming from the API is awkward, actual rank called tier, and division called rank.
                         let rank_data;
-                        if(user_rank_data[0].queueType ==  "RANKED_SOLO_5x5"){
-                            rank_data = user_rank_data[0];
-                        }
-                        if(user_rank_data[0].queueType !=  "RANKED_SOLO_5x5"){
-                            rank_data = user_rank_data[1];
-                        }
-                        
                         let user_rank = "Unranked";
                         let user_division = "";
                         let game_win = "Unranked";
                         let game_lost = "Unranked";
                         let Winrate;
+                        //REASON for this for: the api return 2 types of Queue (SOLO vs Other), and it is random sometimes.
+                        for(var i = 0; i < 1; i++){
+                            if(user_rank_data[i].queueType ==  "RANKED_SOLO_5x5"){
+                                rank_data = user_rank_data[i];
+                                break;
+                            }
+                        }
                         //if the api return undefined for player who hasnt played ranked
                         if(rank_data != null){
                             user_rank = rank_data.tier;
@@ -105,19 +112,25 @@ client.on('message', msg =>{
                         let user_level = summoner_data.summonerLevel;
                         let user_icon_id = summoner_data.profileIconId;
                         //doing embed to show the information
-                        let player_info_embed = new Discord.MessageEmbed() 
-                            .setColor('#0099ff')
-                            .setTitle('Summoner Information')
-                            .setThumbnail(`http://ddragon.leagueoflegends.com/cdn/10.18.1/img/profileicon/${user_icon_id}.png`)
-                            .addFields(
-                                { name: 'Summoner Name', value: user_name},
-                                { name: '\u200B', value: '\u200B' },
-                                { name: 'Summoner Level', value: user_level, inline: true },
-                                { name: 'Rank', value: user_rank+' '+user_division, inline: true },
-                            )
-                            .addField('Win rate', Winrate, true)
-                            .setTimestamp()
-                        msg.channel.send(player_info_embed);
+                        findDDragonVersion().then(
+                            version => {
+                                let player_info_embed = new Discord.MessageEmbed() 
+                                .setColor('#0099ff')
+                                .setTitle('Summoner Information')
+                                .setThumbnail(`http://ddragon.leagueoflegends.com/cdn/${version[0]}/img/profileicon/${user_icon_id}.png`)
+                                .addFields(
+                                    { name: 'Summoner Name', value: user_name},
+                                    { name: '\u200B', value: '\u200B' },
+                                    { name: 'Summoner Level', value: user_level, inline: true },
+                                    { name: 'Rank', value: user_rank+' '+user_division, inline: true },
+                                )
+                                .addField('Win rate', Winrate, true)
+                                .setTimestamp()
+                            msg.channel.send(player_info_embed);
+                            }
+                        
+                        ).catch(error => console.log(error))
+                        
                     }
                 ).catch(error => console.log(error))
             }
@@ -136,11 +149,52 @@ client.on('message', msg =>{
                 let league_api_MATCHV5byPuuid_url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${summoner_data.puuid}/ids?start=0&count=10&api_key=${process.env.RIOT_TOKEN}`;
                 findMatchIdByPuuid(league_api_MATCHV5byPuuid_url).then(
                     match_id_list =>{
-                        for(var i = 0; i < 10; i++ ){
-                            let league_api_MATCHV5byMatchId = `https://americas.api.riotgames.com/lol/match/v5/matches/${match_id_list[i]}?api_key=${process.env.RIOT_TOKEN}`
+                        console.log(match_id_list);
+                        for(var i = 0; i < 10; i++ ){ //this for loop is to loop through all the matches the api return
+                            let league_api_MATCHV5byMatchId = `https://americas.api.riotgames.com/lol/match/v5/matches/${match_id_list[i]}?api_key=${process.env.RIOT_TOKEN}`;
+                            console.log(league_api_MATCHV5byMatchId);
                             findMatchHistoryById(league_api_MATCHV5byMatchId).then(
                                 match_data =>{
-                                    //TODO: now what to do with match_data?
+                                    if(match_data.status == null){ //sometimes the api returns error code with key is "status", if no error, status key does not exist
+                                        let correct_user_puuid = summoner_data.puuid;
+                                        let game_mode;
+                                        let nexus_lost;
+                                        let champion_name;
+                                        let champion_id;
+                                        let kill;
+                                        let death;
+                                        let assist;
+                                        let game_state;
+
+                                        for(var j = 0; j < 10; j++){ //this for loop is to loop through the participants in a match
+                                        //TODO: Win or lost, ROLE, kda, Champion played + icon, gamemode
+                                            if(match_data.info.participants[j] != null && match_data.info.participants[j].puuid == correct_user_puuid){
+                                                let player_ = match_data.info.participants[j];
+                                                game_mode = match_data.info.gameMode;
+                                                nexus_lost = player_.nexusLost; //nexuslost = 1 is lost, else = 0  is win
+                                                champion_name = player_.championName;
+                                                champion_id = player_.championId;
+                                                kill = player_.kills;
+                                                death = player_.deaths;
+                                                assist = player_.assists;
+                                            }
+                                        }
+
+                                        //get game state if won or defeated
+                                        if(nexus_lost == 1){
+                                            game_state = "Defeat";
+                                        } else if(nexus_lost == 0){
+                                            game_state = "Victory";
+                                        }
+
+                                        //create KDA string
+                                        let kda = kill+"/"+death+"/"+assist;
+                                        //TODO: create bot reply with match information
+                                        
+                                    }
+                                    
+                                    
+                                    
                                 }
                             ).catch(error => console.log(error));
                         }
