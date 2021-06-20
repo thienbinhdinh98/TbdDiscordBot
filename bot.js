@@ -152,7 +152,6 @@ client.on('message', msg =>{
                         console.log(match_id_list);
                         for(var i = 0; i < 5; i++ ){ //this for loop is to loop through all the matches the api return
                             let league_api_MATCHV5byMatchId = `https://americas.api.riotgames.com/lol/match/v5/matches/${match_id_list[i]}?api_key=${process.env.RIOT_TOKEN}`;
-                            console.log(league_api_MATCHV5byMatchId);
                             findMatchHistoryById(league_api_MATCHV5byMatchId).then(
                                 match_data =>{
                                     if(match_data.status == null){ //sometimes the api returns error code with key is "status", if no error, status key does not exist
