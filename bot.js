@@ -126,7 +126,7 @@ client.on('message', msg =>{
                                 )
                                 .addField('Win rate', Winrate, true)
                                 .setTimestamp()
-                            msg.channel.send(player_info_embed);
+                                msg.channel.send(player_info_embed);
                             }
                         
                         ).catch(error => console.log(error))
@@ -137,7 +137,7 @@ client.on('message', msg =>{
         ).catch(error => console.log(error))
     }
 
-    //------------------------------------------------------------------------------------------------------------------------
+    //>------------------------------------------------------------------------------------------------------------------------
     //FIND MATCH HISTORY
     if(user_message[0] === `${BOT_PREFIX}${MATCH_HISTORY}`){
         //encode URL of the player name to be sent to the API
@@ -146,11 +146,11 @@ client.on('message', msg =>{
         let league_api_SUMMONERV4_url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${league_user_name}?api_key=${process.env.RIOT_TOKEN}`;
         findUserInfo(league_api_SUMMONERV4_url).then(
             summoner_data => {
-                let league_api_MATCHV5byPuuid_url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${summoner_data.puuid}/ids?start=0&count=10&api_key=${process.env.RIOT_TOKEN}`;
+                let league_api_MATCHV5byPuuid_url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${summoner_data.puuid}/ids?start=0&count=5&api_key=${process.env.RIOT_TOKEN}`;
                 findMatchIdByPuuid(league_api_MATCHV5byPuuid_url).then(
                     match_id_list =>{
                         console.log(match_id_list);
-                        for(var i = 0; i < 10; i++ ){ //this for loop is to loop through all the matches the api return
+                        for(var i = 0; i < 5; i++ ){ //this for loop is to loop through all the matches the api return
                             let league_api_MATCHV5byMatchId = `https://americas.api.riotgames.com/lol/match/v5/matches/${match_id_list[i]}?api_key=${process.env.RIOT_TOKEN}`;
                             console.log(league_api_MATCHV5byMatchId);
                             findMatchHistoryById(league_api_MATCHV5byMatchId).then(
@@ -158,6 +158,7 @@ client.on('message', msg =>{
                                     if(match_data.status == null){ //sometimes the api returns error code with key is "status", if no error, status key does not exist
                                         let correct_user_puuid = summoner_data.puuid;
                                         let game_mode;
+                                        let position;
                                         let nexus_lost;
                                         let champion_name;
                                         let champion_id;
@@ -165,6 +166,7 @@ client.on('message', msg =>{
                                         let death;
                                         let assist;
                                         let game_state;
+                                        let multikill;
 
                                         for(var j = 0; j < 10; j++){ //this for loop is to loop through the participants in a match
                                         //TODO: Win or lost, ROLE, kda, Champion played + icon, gamemode
@@ -172,32 +174,82 @@ client.on('message', msg =>{
                                                 let player_ = match_data.info.participants[j];
                                                 game_mode = match_data.info.gameMode;
                                                 nexus_lost = player_.nexusLost; //nexuslost = 1 is lost, else = 0  is win
+                                                
+                                                state = player_.win;
                                                 champion_name = player_.championName;
                                                 champion_id = player_.championId;
                                                 kill = player_.kills;
                                                 death = player_.deaths;
                                                 assist = player_.assists;
+                                                position = player_.individualPosition;
+                                                multikill = player_.largestMultiKill;
                                             }
+                                        }//end loop
+                                        let multispree;
+                                        switch(multikill){
+                                            case 0:
+                                                multispree = "NA";
+                                                break;
+                                            case 1:
+                                                multispree = "SingleKill";
+                                                break;
+                                            case 2:
+                                                multispree = "DoubleKill";
+                                                break;
+                                            case 3:
+                                                multispree = "TripleKill";
+                                                break;
+                                            case 4:
+                                                multispree = "QuadraKill";
+                                                break;
+                                            case 5:
+                                                multispree = "PENTAKILL";
+                                                break;
                                         }
-
                                         //get game state if won or defeated
-                                        if(nexus_lost == 1){
+                                        if(state === false){
                                             game_state = "Defeat";
-                                        } else if(nexus_lost == 0){
+                                        } else if(state === true){
                                             game_state = "Victory";
                                         }
 
                                         //create KDA string
                                         let kda = kill+"/"+death+"/"+assist;
-                                        //TODO: create bot reply with match information
                                         
-                                    }
-                                    
-                                    
-                                    
+                                        //get champion icon
+                                        let champion_img = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champion_id}.png`
+                                        
+                                        //change game mode name
+                                        if(game_mode == "CLASSIC"){
+                                            game_mode = "Summoner's rift";
+                                        } else if(game_mode == "ARAM"){
+                                            game_mode = "Aram";
+                                        }
+                                        //choose the color for Discord embed message, blue for victory, red is for defeat
+                                        let choose_color;
+                                        if(game_state ==="Defeat" ){
+                                            choose_color = "#FF0000";
+                                        }
+                                        else if(game_state === "Victory"){
+                                            choose_color = "#189AB4";
+                                        }
+                                        let match_embed = new Discord.MessageEmbed() 
+                                        .setTitle(game_state)
+                                        .setColor(choose_color)
+                                        .setThumbnail(champion_img)
+                                        .addField("Map",game_mode)
+                                        .addFields(
+                                            { name: 'Champion: ', value: champion_name},
+                                            { name: 'KDA: ', value: kda, inline: true},
+                                            { name: 'Position: ', value: position, inline: true},
+                                            { name: 'Multikill: ', value: multispree, inline: true},
+                                        )
+                                        msg.channel.send(match_embed);
+
+                                    }//end if
                                 }
                             ).catch(error => console.log(error));
-                        }
+                        }//end loop
                     }
                 ).catch(error => console.log(error));
             }
