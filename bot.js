@@ -232,6 +232,9 @@ client.on('message', msg =>{
                                         else if(game_state === "Victory"){
                                             choose_color = "#189AB4";
                                         }
+                                        if(position == "UTILITY"){
+                                            position = "SUPPORT";
+                                        }
                                         let match_embed = new Discord.MessageEmbed() 
                                         .setTitle(game_state)
                                         .setColor(choose_color)
